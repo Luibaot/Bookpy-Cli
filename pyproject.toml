@@ -1,0 +1,48 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "bookpy-cli"
+version = "0.1.0"
+description = "A polished terminal library for legally available books and documents."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "bookpy-cli contributors" }]
+keywords = ["books", "epub", "public-domain", "cli", "library"]
+classifiers = ["Environment :: Console", "Programming Language :: Python :: 3", "Programming Language :: Python :: 3.12"]
+dependencies = [
+  "httpx>=0.27",
+  "inquirerpy>=0.3.4",
+  "platformdirs>=4.2",
+  "pydantic>=2.7",
+  "rich>=13.7",
+  "typer>=0.12",
+]
+
+[project.optional-dependencies]
+dev = ["mypy>=1.10", "pytest>=8.2", "pytest-asyncio>=0.23", "ruff>=0.5"]
+
+[project.scripts]
+bookpy-cli = "bookpy_cli.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bookpy_cli"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["bookpy_cli"]
