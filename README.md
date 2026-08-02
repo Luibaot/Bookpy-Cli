@@ -1,23 +1,20 @@
 # BOOKPY-CLI
 
-> Find books you can legally read, download, and keep — from your terminal.
+> Find books you can read, download, and keep — from your terminal.
 
 `bookpy-cli` is a fast, keyboard-first macOS terminal application for exploring public-domain,
 open-access, and user-authorized book catalogs. It borrows the clean prompt-driven rhythm of great
 terminal media apps, but is built from scratch for books, papers, documents, and audiobooks.
 
-It does **not** include piracy sources, DRM bypasses, paywall circumvention, or download links that
-the source does not authorize.
-
 ## Why Bookpy?
 
 - **Terminal-native** — compact prompts, fuzzy result selection, arrow-key controls, and familiar
   `-D`, `-H`, and `-L` modes.
-- **Large legal catalog** — searches built-in sources concurrently and keeps working if one is down.
-- **Honest availability** — clearly distinguishes free downloads, borrowing, previews, and metadata.
+- **Large catalog** — searches built-in sources concurrently and keeps working if one is down.
+- **Clear availability** — distinguishes free downloads, borrowing, previews, and metadata.
 - **Your library** — saves downloads under `~/Books/bookpy-cli`, records history in SQLite, and keeps
   metadata alongside each file.
-- **Extensible** — add authorized OPDS catalogs or write a small Python provider for a source you use.
+- **Extensible** — add OPDS catalogs or write a small Python provider for a source you use.
 
 ## Install
 
@@ -82,8 +79,8 @@ bookpy-cli doctor
 | Zenodo | Open research publications and files |
 | Local folders | EPUB, PDF, MOBI, AZW3, TXT, HTML, and CBZ files you already own |
 
-You can also add any authorized **OPDS 2.0** catalog. For sources with loans, accounts, previews, or
-geographic restrictions, Bookpy opens the official page instead of attempting an unauthorized download.
+You can also add any authorized **OPDS 2.0** catalog. Records with loans, accounts, previews, or
+geographic restrictions open their official page instead of advertising a file that is not available.
 
 ## Configuration
 
@@ -120,8 +117,8 @@ Start with [`examples/open_catalog_provider.py`](examples/open_catalog_provider.
 }
 ```
 
-Use this only for APIs and catalogs whose licenses and terms allow your intended use. Bookpy reports
-bad plugin configuration as a helpful warning instead of taking down the rest of the search.
+Use providers that are appropriate for your own setup and source terms. Bookpy shows bad plugin
+configuration as a warning instead of taking down the rest of the search.
 
 ## Development
 

@@ -36,9 +36,16 @@ class GoogleBooksProvider(Provider):
             params["langRestrict"] = filters.language
         if self.api_key:
             params["key"] = self.api_key
-        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
-            response = await client.get(self.endpoint, params=params)
-            response.raise_for_status()
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
+                response = await client.get(self.endpoint, params=params)
+                response.raise_for_status()
+        except httpx.HTTPStatusError as error:
+            if error.response.status_code == 429:
+                raise RuntimeError(
+                    "rate-limited; set google_books_api_key or BOOKPY_GOOGLE_BOOKS_API_KEY"
+                ) from error
+            raise
         return self._books(response.json().get("items", []), filters)
 
     def _books(self, items: list[dict[str, Any]], filters: SearchFilters) -> list[Book]:

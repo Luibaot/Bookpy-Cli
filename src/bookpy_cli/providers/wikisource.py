@@ -46,7 +46,9 @@ class WikisourceProvider(Provider):
             if not isinstance(title, str) or not isinstance(page_id, int):
                 continue
             page_url = f"https://en.wikisource.org/wiki/{quote(title.replace(' ', '_'))}"
-            printable_url = f"{page_url}?printable=yes"
+            printable_url = (
+                f"https://en.wikisource.org/w/index.php?title={quote(title, safe='')}&printable=yes"
+            )
             books.append(
                 Book(
                     id=f"wikisource:{page_id}",

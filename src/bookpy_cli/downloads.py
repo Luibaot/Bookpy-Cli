@@ -41,7 +41,10 @@ async def download_book(
         / f"{safe_name(book.title)} - {safe_name(book.authors[0] if book.authors else 'Unknown Author')}.{option.format}"
     )
     partial = destination.with_suffix(destination.suffix + ".part")
-    headers: dict[str, str] = {}
+    headers: dict[str, str] = {
+        "User-Agent": "bookpy-cli/0.1 (https://github.com/Luibaot/Bookpy-Cli)",
+        "Accept": "*/*",
+    }
     mode = "wb"
     if resume and partial.exists():
         headers["Range"] = f"bytes={partial.stat().st_size}-"

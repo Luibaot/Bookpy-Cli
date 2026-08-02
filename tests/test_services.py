@@ -43,3 +43,9 @@ def test_rank_includes_multiple_sources() -> None:
     ]
     ranked = merge_and_rank(books, SearchFilters(title="machine learning", limit=2))
     assert {book.provider for book in ranked} == {"gutenberg", "arxiv"}
+
+
+def test_search_filters_normalize_terminal_input() -> None:
+    filters = SearchFilters(title="  metaphysics  ", author=" aristotle ")
+    assert filters.title == "metaphysics"
+    assert filters.author == "aristotle"

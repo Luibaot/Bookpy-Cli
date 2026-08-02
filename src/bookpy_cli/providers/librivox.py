@@ -23,10 +23,17 @@ class LibriVoxProvider(Provider):
         if filters.author:
             params["author"] = filters.author
         async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
-            response = await client.get(
-                f"{self.endpoint}/title/{quote(filters.title)}", params=params, headers=self.headers
-            )
-            response.raise_for_status()
+            try:
+                response = await client.get(
+                    f"{self.endpoint}/title/{quote(filters.title)}",
+                    params=params,
+                    headers=self.headers,
+                )
+                response.raise_for_status()
+            except httpx.HTTPStatusError as error:
+                if 400 <= error.response.status_code < 600:
+                    return []
+                raise
         books: list[Book] = []
         for item in response.json().get("books", []):
             if not isinstance(item, dict):

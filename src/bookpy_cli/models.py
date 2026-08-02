@@ -4,7 +4,7 @@ from enum import StrEnum
 from hashlib import sha1
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 DEFAULT_PROVIDER_NAMES = [
     "gutenberg",
@@ -86,6 +86,19 @@ class SearchFilters(BaseModel):
     format: BookFormat | None = None
     abridged_ok: bool = True
     limit: int = Field(default=20, ge=1, le=100)
+
+    @field_validator("title")
+    @classmethod
+    def normalize_title(cls, value: str) -> str:
+        return " ".join(value.split())
+
+    @field_validator("author", "language")
+    @classmethod
+    def normalize_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = " ".join(value.split())
+        return normalized or None
 
 
 class ProviderStatus(BaseModel):

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
+from typing import Any
+
 import httpx
 
 from bookpy_cli.models import (
     AccessType,
     Book,
-    BookFormat,
-    DownloadOption,
     ProviderStatus,
     SearchFilters,
 )
@@ -27,25 +27,16 @@ class OpenLibraryProvider(Provider):
         async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
             response = await client.get(self.endpoint, params=params)
             response.raise_for_status()
+        return self._books(response.json().get("docs", []), filters)
+
+    def _books(self, items: list[dict[str, Any]], filters: SearchFilters) -> list[Book]:
         books: list[Book] = []
-        for item in response.json().get("docs", []):
+        for item in items:
             languages = item.get("language", [])
             if filters.language and filters.language.lower() not in languages:
                 continue
             edition_key = (item.get("edition_key") or [None])[0]
-            ia_ids = item.get("ia", [])
-            downloads: list[DownloadOption] = []
-            if ia_ids:
-                identifier = ia_ids[0]
-                downloads.append(
-                    DownloadOption(
-                        format=BookFormat.PDF,
-                        url=f"https://archive.org/download/{identifier}/{identifier}_text.pdf",
-                        label="Internet Archive (availability varies)",
-                    )
-                )
-            formats = [option.format for option in downloads]
-            if filters.format and filters.format not in formats:
+            if filters.format:
                 continue
             cover = item.get("cover_i")
             books.append(
@@ -58,8 +49,6 @@ class OpenLibraryProvider(Provider):
                     year=item.get("first_publish_year"),
                     language=languages[0] if languages else None,
                     isbn=(item.get("isbn") or [])[:10],
-                    formats=formats,
-                    downloads=downloads,
                     access=AccessType.BORROW
                     if item.get("lending_edition_s")
                     else AccessType.METADATA,

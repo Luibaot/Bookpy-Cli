@@ -44,7 +44,7 @@ app = typer.Typer(
     add_completion=True,
     no_args_is_help=False,
     rich_markup_mode="rich",
-    help="Find books and documents from legal sources.",
+    help="Find books and documents from open and authorized sources.",
 )
 providers_app = typer.Typer(help="Inspect installed providers.")
 library_app = typer.Typer(help="Manage downloads and favorites.")
@@ -149,7 +149,7 @@ def search(
     limit: Annotated[int, typer.Option(min=1, max=100)] = 20,
     json_output: Annotated[bool, typer.Option("--json", help="Emit JSON for scripts")] = False,
 ) -> None:
-    """Search concurrently across enabled legal catalog providers."""
+    """Search concurrently across enabled catalog providers."""
     books = run_search(
         SearchFilters(title=title, author=author, language=language, format=format, limit=limit)
     )
@@ -168,7 +168,7 @@ def download(
     result_id: Annotated[str, typer.Argument(help="Provider result ID, e.g. gutenberg:1342")],
     format: Annotated[BookFormat | None, typer.Option("--format")] = None,
 ) -> None:
-    """Download a directly available legal result from a current search ID."""
+    """Download a directly available result from a current search ID."""
     provider_name, _, provider_id = result_id.partition(":")
     if provider_name != "gutenberg" or not provider_id.isdigit():
         raise typer.BadParameter(
@@ -203,9 +203,7 @@ def providers_list() -> None:
         }.get(provider.name, "Catalog records / local files")
         table.add_row(provider.name.replace("_", " ").title(), capability)
     console.print(table)
-    console.print(
-        "[dim]Third-party plugins must comply with provider terms and applicable copyright law.[/]"
-    )
+    console.print("[dim]Custom providers run locally. Review their source and provider terms.[/]")
     for error in setup_errors:
         console.print(f"[yellow]Custom provider unavailable:[/] {error}")
 
