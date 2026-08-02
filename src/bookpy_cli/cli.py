@@ -35,6 +35,7 @@ from bookpy_cli.providers import (
     ZenodoProvider,
 )
 from bookpy_cli.providers.plugins import load_custom_providers
+from bookpy_cli.reader import BookReaderError, read_book
 from bookpy_cli.services import search_all
 from bookpy_cli.ui import console, format_choices, search_table
 
@@ -44,7 +45,7 @@ app = typer.Typer(
     add_completion=True,
     no_args_is_help=False,
     rich_markup_mode="rich",
-    help="Find books and documents from open and authorized sources.",
+    help="Find books and documents from catalog providers.",
 )
 providers_app = typer.Typer(help="Inspect installed providers.")
 library_app = typer.Typer(help="Manage downloads and favorites.")
@@ -87,7 +88,7 @@ def get_providers() -> list[Provider]:
 
 def run_search(filters: SearchFilters) -> list[Book]:
     providers, setup_errors = provider_setup()
-    with console.status("[bold cyan]Searching trusted catalogs…[/]", spinner="dots"):
+    with console.status("[bold cyan]Searching catalogs…[/]", spinner="dots"):
         books, failures = asyncio.run(search_all(providers, filters))
     for error in setup_errors:
         console.print(f"[yellow]Custom provider unavailable:[/] {error}")
@@ -180,6 +181,27 @@ def download(
     if not book:
         raise typer.BadParameter("Result not found. Search again to confirm it is available.")
     _download_selected(book, format)
+
+
+@app.command()
+def read(
+    file: Annotated[Path, typer.Argument(help="Local EPUB, TXT, Markdown, HTML, or PDF file")],
+    pager: Annotated[
+        bool, typer.Option("--pager/--no-pager", help="Open text in your terminal pager")
+    ] = True,
+) -> None:
+    """Read a local book directly in the terminal."""
+    try:
+        text = read_book(file)
+    except BookReaderError as error:
+        raise typer.BadParameter(str(error), param_hint="file") from error
+    if pager:
+        with console.pager(styles=True):
+            console.print(f"[bold cyan]{file.expanduser().name}[/]\n")
+            console.print(text)
+        return
+    console.print(f"[bold cyan]{file.expanduser().name}[/]\n")
+    console.print(text)
 
 
 @providers_app.command("list")

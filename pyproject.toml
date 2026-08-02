@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "bookpy-cli"
 version = "0.1.0"
-description = "A polished terminal library for legally available books and documents."
+description = "A polished terminal library for books and documents."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
