@@ -50,7 +50,15 @@ def merge_and_rank(books: list[Book], filters: SearchFilters) -> list[Book]:
         ).ratio()
         format_bonus = 0.2 if filters.format in book.formats else 0
         book.score = title_score * 0.8 + author_score * 0.2 + format_bonus
-    return sorted(merged, key=lambda book: book.score, reverse=True)[: filters.limit]
+    ranked = sorted(merged, key=lambda book: book.score, reverse=True)
+    diverse: list[Book] = []
+    represented: set[str] = set()
+    for book in ranked:
+        if book.provider not in represented:
+            diverse.append(book)
+            represented.add(book.provider)
+    diverse.extend(book for book in ranked if book not in diverse)
+    return diverse[: filters.limit]
 
 
 def _same_book(left: Book, right: Book) -> bool:

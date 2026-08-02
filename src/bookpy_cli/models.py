@@ -6,6 +6,21 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+DEFAULT_PROVIDER_NAMES = [
+    "gutenberg",
+    "google_books",
+    "internet_archive",
+    "wikisource",
+    "librivox",
+    "openalex",
+    "oapen",
+    "zenodo",
+    "europe_pmc",
+    "open_library",
+    "arxiv",
+    "local",
+]
+
 
 class AccessType(StrEnum):
     FREE = "freely downloadable"
@@ -80,21 +95,14 @@ class ProviderStatus(BaseModel):
 
 
 class AppConfig(BaseModel):
+    config_version: int = 3
     library_path: str = "~/Books/bookpy-cli"
     theme: str = "midnight"
     timeout_seconds: float = 12.0
+    google_books_api_key: str | None = None
     search_cache_minutes: int = 30
     update_checks: bool = True
-    enabled_providers: list[str] = Field(
-        default_factory=lambda: [
-            "gutenberg",
-            "google_books",
-            "internet_archive",
-            "open_library",
-            "arxiv",
-            "local",
-        ]
-    )
+    enabled_providers: list[str] = Field(default_factory=lambda: DEFAULT_PROVIDER_NAMES.copy())
     local_folders: list[str] = Field(default_factory=list)
     opds_catalogs: list[str] = Field(default_factory=list)
     custom_providers: list[str] = Field(default_factory=list)

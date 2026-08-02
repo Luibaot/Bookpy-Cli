@@ -24,3 +24,22 @@ def test_merge_matches_normalized_title_and_author() -> None:
     merged = merge_and_rank([left, right], SearchFilters(title="Pride and Prejudice"))
     assert len(merged) == 1
     assert set(merged[0].formats) == {BookFormat.EPUB, BookFormat.PDF}
+
+
+def test_rank_includes_multiple_sources() -> None:
+    books = [
+        Book(
+            id="gutenberg",
+            provider="gutenberg",
+            provider_id="1",
+            title="Python Machine Learning",
+        ),
+        Book(
+            id="arxiv",
+            provider="arxiv",
+            provider_id="2",
+            title="Machine Learning Research",
+        ),
+    ]
+    ranked = merge_and_rank(books, SearchFilters(title="machine learning", limit=2))
+    assert {book.provider for book in ranked} == {"gutenberg", "arxiv"}

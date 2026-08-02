@@ -84,7 +84,7 @@ class GutenbergProvider(Provider):
 
     async def health_check(self) -> ProviderStatus:
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
                 response = await client.get(self.endpoint, params={"ids": "1"})
                 response.raise_for_status()
             return ProviderStatus(name=self.name, healthy=True, detail="Gutendex API reachable")

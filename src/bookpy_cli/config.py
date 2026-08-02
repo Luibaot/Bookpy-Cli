@@ -5,7 +5,7 @@ from pathlib import Path
 
 from platformdirs import user_config_dir, user_data_dir
 
-from bookpy_cli.models import AppConfig
+from bookpy_cli.models import DEFAULT_PROVIDER_NAMES, AppConfig
 
 APP_NAME = "bookpy-cli"
 
@@ -29,7 +29,14 @@ def load_config() -> AppConfig:
         config = AppConfig()
         save_config(config)
         return config
-    return AppConfig.model_validate_json(path.read_text())
+    raw = json.loads(path.read_text())
+    config = AppConfig.model_validate(raw)
+    if raw.get("config_version", 1) < config.config_version:
+        config.enabled_providers = list(
+            dict.fromkeys([*DEFAULT_PROVIDER_NAMES, *config.enabled_providers])
+        )
+        save_config(config)
+    return config
 
 
 def save_config(config: AppConfig) -> None:

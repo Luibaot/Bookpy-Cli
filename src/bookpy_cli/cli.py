@@ -20,13 +20,21 @@ from bookpy_cli.downloads import download_book
 from bookpy_cli.models import AccessType, Book, BookFormat, ProviderStatus, SearchFilters
 from bookpy_cli.providers import (
     ArxivProvider,
+    EuropePMCProvider,
     GoogleBooksProvider,
     GutenbergProvider,
     InternetArchiveProvider,
+    LibriVoxProvider,
     LocalFolderProvider,
+    OAPENProvider,
+    OPDSProvider,
+    OpenAlexProvider,
     OpenLibraryProvider,
     Provider,
+    WikisourceProvider,
+    ZenodoProvider,
 )
+from bookpy_cli.providers.plugins import load_custom_providers
 from bookpy_cli.services import search_all
 from bookpy_cli.ui import console, format_choices, search_table
 
@@ -46,31 +54,70 @@ app.add_typer(library_app, name="library")
 app.add_typer(config_app, name="config")
 
 
-def get_providers() -> list[Provider]:
+def provider_setup() -> tuple[list[Provider], list[str]]:
     config = load_config()
     available: dict[str, Provider] = {
         "arxiv": ArxivProvider(config.timeout_seconds),
+        "europe_pmc": EuropePMCProvider(config.timeout_seconds),
         "gutenberg": GutenbergProvider(config.timeout_seconds),
-        "google_books": GoogleBooksProvider(config.timeout_seconds),
+        "google_books": GoogleBooksProvider(
+            config.timeout_seconds,
+            config.google_books_api_key or os.environ.get("BOOKPY_GOOGLE_BOOKS_API_KEY"),
+        ),
         "internet_archive": InternetArchiveProvider(config.timeout_seconds),
+        "librivox": LibriVoxProvider(config.timeout_seconds),
         "open_library": OpenLibraryProvider(config.timeout_seconds),
+        "openalex": OpenAlexProvider(config.timeout_seconds),
+        "oapen": OAPENProvider(config.timeout_seconds),
         "local": LocalFolderProvider(config.local_folders),
+        "wikisource": WikisourceProvider(config.timeout_seconds),
+        "zenodo": ZenodoProvider(config.timeout_seconds),
     }
-    return [available[name] for name in config.enabled_providers if name in available]
+    enabled = [available[name] for name in config.enabled_providers if name in available]
+    enabled.extend(
+        OPDSProvider(catalog, config.timeout_seconds) for catalog in config.opds_catalogs
+    )
+    custom, errors = load_custom_providers(config.custom_providers, config.timeout_seconds)
+    return [*enabled, *custom], errors
+
+
+def get_providers() -> list[Provider]:
+    return provider_setup()[0]
 
 
 def run_search(filters: SearchFilters) -> list[Book]:
+    providers, setup_errors = provider_setup()
     with console.status("[bold cyan]Searching trusted catalogs…[/]", spinner="dots"):
-        books, failures = asyncio.run(search_all(get_providers(), filters))
+        books, failures = asyncio.run(search_all(providers, filters))
+    for error in setup_errors:
+        console.print(f"[yellow]Custom provider unavailable:[/] {error}")
     for failure in failures:
         console.print(f"[yellow]Provider unavailable:[/] {failure}")
+    if books:
+        sources = ", ".join(sorted({book.provider.replace("_", " ") for book in books}))
+        console.print(f"[dim]Sources: {sources}[/]")
     return books
 
 
 @app.callback(invoke_without_command=True)
-def home(ctx: typer.Context) -> None:
+def home(
+    ctx: typer.Context,
+    download_mode: Annotated[
+        bool, typer.Option("--download", "-D", help="Search then download a selected free file")
+    ] = False,
+    history_mode: Annotated[
+        bool, typer.Option("--history", "-H", help="Show download history")
+    ] = False,
+    library_mode: Annotated[bool, typer.Option("--library", "-L", help="Show saved books")] = False,
+) -> None:
     """Open the compact interactive book search."""
     if ctx.invoked_subcommand:
+        return
+    if history_mode:
+        _show_downloads()
+        return
+    if library_mode:
+        _show_favorites()
         return
     author = None
     if inquirer.confirm("Do you want to filter by author?", default=False).execute():
@@ -86,7 +133,9 @@ def home(ctx: typer.Context) -> None:
     ).execute()
     if not title or not title.strip():
         return
-    _interactive_results(run_search(SearchFilters(title=title, author=author, limit=30)))
+    _interactive_results(
+        run_search(SearchFilters(title=title, author=author, limit=30)), download_mode
+    )
 
 
 @app.command()
@@ -135,21 +184,30 @@ def download(
 
 @providers_app.command("list")
 def providers_list() -> None:
+    providers, setup_errors = provider_setup()
     table = Table(title="Enabled providers")
     table.add_column("Provider")
     table.add_column("Capability")
-    for provider in get_providers():
+    for provider in providers:
         capability = {
             "arxiv": "Open-access PDFs",
             "google_books": "Public-domain files and preview records",
             "gutenberg": "Direct public-domain files",
             "internet_archive": "Official records and borrowing links",
+            "librivox": "Free public-domain audiobooks",
+            "openalex": "Open-access scholarly work and PDFs",
+            "oapen": "Peer-reviewed open-access books",
+            "europe_pmc": "Open-access biomedical literature",
+            "wikisource": "Free public-domain and open texts",
+            "zenodo": "Open research files and publications",
         }.get(provider.name, "Catalog records / local files")
         table.add_row(provider.name.replace("_", " ").title(), capability)
     console.print(table)
     console.print(
         "[dim]Third-party plugins must comply with provider terms and applicable copyright law.[/]"
     )
+    for error in setup_errors:
+        console.print(f"[yellow]Custom provider unavailable:[/] {error}")
 
 
 @providers_app.command("test")
@@ -197,10 +255,11 @@ def doctor() -> None:
 
 
 async def _provider_statuses() -> list[ProviderStatus]:
-    return await asyncio.gather(*(provider.health_check() for provider in get_providers()))
+    providers, _ = provider_setup()
+    return await asyncio.gather(*(provider.health_check() for provider in providers))
 
 
-def _interactive_results(books: list[Book]) -> None:
+def _interactive_results(books: list[Book], download_mode: bool = False) -> None:
     if not books:
         console.print("[yellow]No search results.[/]")
         return
@@ -226,11 +285,15 @@ def _interactive_results(books: list[Book]) -> None:
         f"[{selected.provider}] {selected.access} | "
         f"{', '.join(item.upper() for item in selected.formats) or 'no direct file'}"
     )
-    action = inquirer.select(
-        message="Select Action:",
-        choices=["Download / open source", "Add or remove favorite", "Back"],
-        mandatory=False,
-    ).execute()
+    action = (
+        "Download / open source"
+        if download_mode
+        else inquirer.select(
+            message="Select Action:",
+            choices=["Download / open source", "Add or remove favorite", "Back"],
+            mandatory=False,
+        ).execute()
+    )
     if action == "Download / open source":
         _download_selected(selected, None)
     elif action == "Add or remove favorite":

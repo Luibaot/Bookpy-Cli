@@ -71,14 +71,18 @@ class ArxivProvider(Provider):
 
     async def health_check(self) -> ProviderStatus:
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
                 response = await client.get(
                     self.endpoint, params={"search_query": "all:books", "max_results": 1}
                 )
                 response.raise_for_status()
             return ProviderStatus(name=self.name, healthy=True, detail="arXiv API reachable")
         except httpx.HTTPError as error:
-            return ProviderStatus(name=self.name, healthy=False, detail=str(error))
+            return ProviderStatus(
+                name=self.name,
+                healthy=False,
+                detail=str(error) or type(error).__name__,
+            )
 
 
 def _text(element: element_tree.Element[str], name: str) -> str:

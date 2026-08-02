@@ -19,8 +19,9 @@ class GoogleBooksProvider(Provider):
     name = "google_books"
     endpoint = "https://www.googleapis.com/books/v1/volumes"
 
-    def __init__(self, timeout: float = 12.0) -> None:
+    def __init__(self, timeout: float = 12.0, api_key: str | None = None) -> None:
         self.timeout = timeout
+        self.api_key = api_key
 
     async def search(self, filters: SearchFilters) -> list[Book]:
         query = filters.title
@@ -33,6 +34,8 @@ class GoogleBooksProvider(Provider):
         }
         if filters.language:
             params["langRestrict"] = filters.language
+        if self.api_key:
+            params["key"] = self.api_key
         async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
             response = await client.get(self.endpoint, params=params)
             response.raise_for_status()
@@ -89,9 +92,10 @@ class GoogleBooksProvider(Provider):
     async def health_check(self) -> ProviderStatus:
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(
-                    self.endpoint, params={"q": "public domain", "maxResults": 1}
-                )
+                params: dict[str, str | int] = {"q": "public domain", "maxResults": 1}
+                if self.api_key:
+                    params["key"] = self.api_key
+                response = await client.get(self.endpoint, params=params)
                 response.raise_for_status()
             return ProviderStatus(name=self.name, healthy=True, detail="Google Books API reachable")
         except httpx.HTTPError as error:
