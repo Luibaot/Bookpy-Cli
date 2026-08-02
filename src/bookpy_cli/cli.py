@@ -185,22 +185,27 @@ def download(
 
 @app.command()
 def read(
-    file: Annotated[Path, typer.Argument(help="Local EPUB, TXT, Markdown, HTML, or PDF file")],
+    file: Annotated[
+        Path | None, typer.Argument(help="Local EPUB, TXT, Markdown, HTML, or PDF file")
+    ] = None,
     pager: Annotated[
         bool, typer.Option("--pager/--no-pager", help="Open text in your terminal pager")
     ] = True,
 ) -> None:
-    """Read a local book directly in the terminal."""
+    """Pick a downloaded book or read a local file in the terminal."""
+    book_path = file or _pick_downloaded_book()
+    if book_path is None:
+        return
     try:
-        text = read_book(file)
+        text = read_book(book_path)
     except BookReaderError as error:
         raise typer.BadParameter(str(error), param_hint="file") from error
     if pager:
         with console.pager(styles=True):
-            console.print(f"[bold cyan]{file.expanduser().name}[/]\n")
+            console.print(f"[bold cyan]{book_path.expanduser().name}[/]\n")
             console.print(text)
         return
-    console.print(f"[bold cyan]{file.expanduser().name}[/]\n")
+    console.print(f"[bold cyan]{book_path.expanduser().name}[/]\n")
     console.print(text)
 
 
@@ -364,6 +369,31 @@ def _show_downloads() -> None:
     for row in rows:
         table.add_row(row["title"], row["author"], row["path"], row["downloaded_at"])
     console.print(table)
+
+
+def _pick_downloaded_book() -> Path | None:
+    rows = LibraryDatabase().downloads()
+    if not rows:
+        console.print("[dim]No downloaded books yet.[/]")
+        return None
+    choices = []
+    for index, row in enumerate(rows, 1):
+        path = Path(row["path"]).expanduser()
+        status = "" if path.is_file() else " [missing file]"
+        choices.append(
+            Choice(
+                name=f"{index}. {row['title']} — {row['author']}{status}",
+                value=path,
+                enabled=path.is_file(),
+            )
+        )
+    selected = inquirer.select(
+        message="Select downloaded book:",
+        choices=choices,
+        long_instruction="Use ↑/↓ to choose a book, then press enter.",
+        mandatory=False,
+    ).execute()
+    return selected if isinstance(selected, Path) else None
 
 
 def _show_favorites() -> None:

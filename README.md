@@ -9,10 +9,12 @@ local library, and reading books without leaving the terminal.
 bookpy-cli
 bookpy-cli search "The Republic" --author Plato
 bookpy-cli read ~/Books/bookpy-cli/Plato/The\ Republic.epub
+bookpy-read
 ```
 
 The reader supports EPUB, TXT, Markdown, and HTML out of the box. PDFs work when `pdftotext` is
-installed. Use `--no-pager` to print the text directly instead of opening your terminal pager.
+installed. Run `bookpy-cli read` or `bookpy-read` with no file to select a downloaded book with the
+arrow keys. Use `--no-pager` to print the text directly instead of opening your terminal pager.
 
 ## How do I install it?
 
